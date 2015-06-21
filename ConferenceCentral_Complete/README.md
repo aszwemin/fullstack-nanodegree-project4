@@ -1,32 +1,63 @@
-App Engine application for the Udacity training course.
+Conference App for project 4 of fullstack nanodegree.
 
-## Products
-- [App Engine][1]
+## How to run the project
 
-## Language
-- [Python][2]
+1. Go to `project5-123.appspot.com/_ah/api/explorer`
+2. You can use the api explorer to test the application
+3. For task 1, the following endpoints are available:
+  * `getConferenceSessions(websafeConferenceKey)`
+  * `getConferenceSessionsByType(websafeConferenceKey, typeOfSession)`
+  * `getSessionsBySpeaker(speaker)`
+  * `createSession(SessionForm, websafeConferenceKey)`
+4. For task 2, the following endpoints are available:
+  * `addSessionToWishlist(SessionId, websafeConferenceKey)`
+  * `getSessionsInWishlist()`
+5. For task 3, the following endpoints are available:
+  * `getSessionsByLocation(location)`
+  * `getSessionsByDate(date)`
+6. For task 4, the following endpoint is available:
+  * `getFeaturedSpeaker()`
 
-## APIs
-- [Google Cloud Endpoints][3]
+## Task 1 design decisions
 
-## Setup Instructions
-1. Update the value of `application` in `app.yaml` to the app ID you
-   have registered in the App Engine admin console and would like to use to host
-   your instance of this sample.
-1. Update the values at the top of `settings.py` to
-   reflect the respective client IDs you have registered in the
-   [Developer Console][4].
-1. Update the value of CLIENT_ID in `static/js/app.js` to the Web client ID
-1. (Optional) Mark the configuration files as unchanged as follows:
-   `$ git update-index --assume-unchanged app.yaml settings.py static/js/app.js`
-1. Run the app with the devserver using `dev_appserver.py DIR`, and ensure it's running by visiting your local server's address (by default [localhost:8080][5].)
-1. (Optional) Generate your client library(ies) with [the endpoints tool][6].
-1. Deploy your application.
+### Session
 
+The session class has following fields:
+* `name = ndb.StringProperty(required=True)` - a string property representing the name of the session
+* `highlights = ndb.TextProperty()` - a text property (as highlights can be a longer text) representing the highlights of the session
+* `speaker = ndb.StringProperty()` - a string property (decided on having just a string property instead of a separate entity) representing the speaker of the session
+* `date = ndb.DateProperty()` - a date property (converted in code from user input) representing the date of the session
+* `start_time = ndb.TimeProperty()` - a time property (converted in code from user input) representing the time of the session 
+* `duration_mins = ndb.IntegerProperty()` - an integer property (as it's a number with no need for decimal places) representing the duration of the session in minutes
+* `type_of_session = ndb.StringProperty()` - a string property (limited to the values of SessionType) representing the type of the session
+* `location = ndb.StringProperty()` - a string property (didn't want to use the location property as this is more the name of the room) representing the location of the session
 
-[1]: https://developers.google.com/appengine
-[2]: http://python.org
-[3]: https://developers.google.com/appengine/docs/python/endpoints/
-[4]: https://console.developers.google.com/
-[5]: https://localhost:8080/
-[6]: https://developers.google.com/appengine/docs/python/endpoints/endpoints_tool
+### Speaker
+
+Speaker was not implemented as a separate entity, instead it's just a string property on the session.
+
+## Task 2 design decisions
+
+### Storing of the wishlist
+
+Wishlist is stored in a repeated integer property (as it is an id) on the Profile.
+
+### Adding a session to the wishlist
+
+Ideally the addSessionToWishlist would take a websafe key of the session, but to make testing easier, it takes an id of the session and a websafe conference key of the parent. Both of these parameters are required as they're both needed to correctly pull session from the datastore without the key. 
+
+## Task 3 design decisions
+
+### Two extra queries
+
+I have added two additional queries that can be accessed through getSessionsByLocation(location) and getSessionsByDate(date) which filter all sessions by location and date accordingly. These would allow user to filter down all the sessions to see the one they may be interested in.
+
+### Query problem
+
+The problem with having query for both non-workshop and before 7pm sessions is that Google Datastore doesn't allow multiple inequalities for different properties. Possible solution would be to make two seperate queries and combine them in the code.
+
+## Task 4 design decisions
+
+### Featured speaker
+
+Featured speaker is stored in memcache. When new session is being added, we iterate through all sessions and find the speaker who has the most sessions. If there is a tie, only one user will be shown. Iterating over all sessions is fairly resource heavy, but happens only when session is being added and allows for an accurate featured speaker determination. Since featured speaker will be stored in memcache, there will be no datastore queries made at the time of calling getFeaturedSpeaker.
