@@ -863,4 +863,24 @@ class ConferenceApi(remote.Service):
         featured_speaker = memcache.get(MEMCACHE_FEATURED_SPEAKER_KEY)
         return FeaturedSpeakerForm(featured_speaker=featured_speaker)
 
+    @staticmethod
+    def _get_featured_speaker():
+        """Determine who should be the featured speaker and save it
+        in memcache
+        """
+        # check which speaker has the most sessions and set memcache
+        sessions = Session.query()
+        speakers = {}
+        for session in sessions:
+            if session.speaker:
+                if session.speaker not in speakers:
+                    speakers[session.speaker] = 1
+                else:
+                    speakers[session.speaker] += 1
+        if speakers:
+            featured_speaker = max(
+                speakers.iteritems(), key=operator.itemgetter(1))[0]
+            memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, featured_speaker)
+
+
 api = endpoints.api_server([ConferenceApi])  # register API
